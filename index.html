@@ -1,0 +1,1072 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>HIIT 計時器</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="HIIT">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="theme-color" content="#0a0a0f">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=JetBrains+Mono:wght@700;800&display=swap');
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --bg: #0a0a0f;
+    --surface: #14141f;
+    --surface2: #1c1c2e;
+    --border: #2a2a40;
+    --text: #e8e8f0;
+    --text-dim: #7a7a95;
+    --work: #ff4d4d;
+    --work-glow: rgba(255, 77, 77, 0.3);
+    --rest: #4dff91;
+    --rest-glow: rgba(77, 255, 145, 0.3);
+    --set-rest: #4da6ff;
+    --set-rest-glow: rgba(77, 166, 255, 0.3);
+    --accent: #ff6b35;
+    --accent-glow: rgba(255, 107, 53, 0.25);
+  }
+
+  body {
+    font-family: 'Noto Sans TC', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    overflow-x: hidden;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  /* ===== SETUP SCREEN ===== */
+  .screen { display: none; min-height: 100dvh; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  #setup-screen {
+    padding: 20px 16px 100px;
+    gap: 20px;
+  }
+
+  .app-header {
+    text-align: center;
+    padding: 16px 0 8px;
+  }
+
+  .app-header h1 {
+    font-size: 28px;
+    font-weight: 900;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, #ff4d4d, #ff6b35, #ffaa33);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .app-header p {
+    color: var(--text-dim);
+    font-size: 13px;
+    margin-top: 4px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 20px;
+  }
+
+  .card-title {
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-dim);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title .icon {
+    font-size: 18px;
+  }
+
+  /* Time settings */
+  .time-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 12px;
+  }
+
+  .time-setting {
+    text-align: center;
+  }
+
+  .time-setting label {
+    display: block;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+
+  .time-control {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+  }
+
+  .time-control button {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+  }
+
+  .time-control button:active {
+    transform: scale(0.9);
+    background: var(--border);
+  }
+
+  .time-control .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 22px;
+    font-weight: 800;
+    width: 48px;
+    text-align: center;
+    color: var(--accent);
+  }
+
+  .time-control .unit {
+    font-size: 11px;
+    color: var(--text-dim);
+  }
+
+  /* Sets control */
+  .sets-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+  }
+
+  .sets-row button {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-size: 22px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+
+  .sets-row button:active {
+    transform: scale(0.9);
+  }
+
+  .sets-row .value {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 40px;
+    font-weight: 800;
+    color: var(--accent);
+    width: 60px;
+    text-align: center;
+  }
+
+  /* Exercise list */
+  .exercise-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .exercise-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px;
+    background: var(--surface2);
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    transition: all 0.2s;
+  }
+
+  .exercise-item .num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--accent);
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+
+  .exercise-item input {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 16px;
+    font-weight: 500;
+    outline: none;
+  }
+
+  .exercise-item input::placeholder {
+    color: var(--text-dim);
+  }
+
+  .exercise-item .drag-handle {
+    color: var(--text-dim);
+    font-size: 16px;
+    cursor: grab;
+    padding: 4px;
+    flex-shrink: 0;
+  }
+
+  .exercise-item .delete-btn {
+    background: none;
+    border: none;
+    color: #ff4d4d88;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 4px;
+    flex-shrink: 0;
+    transition: color 0.15s;
+  }
+
+  .exercise-item .delete-btn:hover {
+    color: #ff4d4d;
+  }
+
+  .add-exercise-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 12px;
+    border: 2px dashed var(--border);
+    border-radius: 12px;
+    background: none;
+    color: var(--text-dim);
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    width: 100%;
+  }
+
+  .add-exercise-btn:active {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* Start button */
+  .start-btn-container {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 16px;
+    background: linear-gradient(transparent, var(--bg) 30%);
+    z-index: 10;
+  }
+
+  .start-btn {
+    width: 100%;
+    padding: 18px;
+    border: none;
+    border-radius: 16px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 4px;
+    cursor: pointer;
+    background: linear-gradient(135deg, #ff4d4d, #ff6b35);
+    color: white;
+    box-shadow: 0 4px 30px var(--accent-glow);
+    transition: all 0.2s;
+  }
+
+  .start-btn:active {
+    transform: scale(0.97);
+  }
+
+  /* ===== TIMER SCREEN ===== */
+  #timer-screen {
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #timer-screen::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.5s;
+  }
+
+  #timer-screen.phase-work::before {
+    background: radial-gradient(ellipse at center, var(--work-glow), transparent 70%);
+    opacity: 1;
+  }
+
+  #timer-screen.phase-rest::before {
+    background: radial-gradient(ellipse at center, var(--rest-glow), transparent 70%);
+    opacity: 1;
+  }
+
+  #timer-screen.phase-set-rest::before {
+    background: radial-gradient(ellipse at center, var(--set-rest-glow), transparent 70%);
+    opacity: 1;
+  }
+
+  .timer-content {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    padding: 20px;
+    gap: 16px;
+  }
+
+  .progress-info {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text-dim);
+    letter-spacing: 1px;
+  }
+
+  .phase-label {
+    font-size: 20px;
+    font-weight: 900;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    transition: color 0.3s;
+  }
+
+  .phase-work .phase-label { color: var(--work); }
+  .phase-rest .phase-label { color: var(--rest); }
+  .phase-set-rest .phase-label { color: var(--set-rest); }
+
+  .exercise-name {
+    font-size: 28px;
+    font-weight: 900;
+    text-align: center;
+    min-height: 40px;
+  }
+
+  .timer-ring-container {
+    position: relative;
+    width: 260px;
+    height: 260px;
+    margin: 8px 0;
+  }
+
+  .timer-ring {
+    width: 100%;
+    height: 100%;
+    transform: rotate(-90deg);
+  }
+
+  .timer-ring-bg {
+    fill: none;
+    stroke: var(--surface2);
+    stroke-width: 8;
+  }
+
+  .timer-ring-progress {
+    fill: none;
+    stroke-width: 8;
+    stroke-linecap: round;
+    transition: stroke 0.3s;
+  }
+
+  .phase-work .timer-ring-progress { stroke: var(--work); filter: drop-shadow(0 0 8px var(--work-glow)); }
+  .phase-rest .timer-ring-progress { stroke: var(--rest); filter: drop-shadow(0 0 8px var(--rest-glow)); }
+  .phase-set-rest .timer-ring-progress { stroke: var(--set-rest); filter: drop-shadow(0 0 8px var(--set-rest-glow)); }
+
+  .timer-display {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 80px;
+    font-weight: 800;
+    line-height: 1;
+  }
+
+  .phase-work .timer-display { color: var(--work); text-shadow: 0 0 30px var(--work-glow); }
+  .phase-rest .timer-display { color: var(--rest); text-shadow: 0 0 30px var(--rest-glow); }
+  .phase-set-rest .timer-display { color: var(--set-rest); text-shadow: 0 0 30px var(--set-rest-glow); }
+
+  .next-up {
+    font-size: 14px;
+    color: var(--text-dim);
+    text-align: center;
+  }
+
+  .next-up span {
+    color: var(--text);
+    font-weight: 700;
+  }
+
+  /* Progress dots */
+  .exercise-dots {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+    max-width: 300px;
+  }
+
+  .exercise-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    transition: all 0.3s;
+  }
+
+  .exercise-dot.done {
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 0 6px var(--accent-glow);
+  }
+
+  .exercise-dot.current {
+    background: var(--work);
+    border-color: var(--work);
+    box-shadow: 0 0 8px var(--work-glow);
+    transform: scale(1.3);
+  }
+
+  /* Timer controls */
+  .timer-controls {
+    display: flex;
+    gap: 20px;
+    margin-top: 8px;
+  }
+
+  .timer-controls button {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font-size: 24px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+  }
+
+  .timer-controls button:active {
+    transform: scale(0.9);
+  }
+
+  .timer-controls .pause-btn {
+    width: 80px;
+    height: 80px;
+    font-size: 30px;
+    border-color: var(--accent);
+    box-shadow: 0 0 20px var(--accent-glow);
+  }
+
+  /* Countdown overlay */
+  .countdown-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(10, 10, 15, 0.95);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    flex-direction: column;
+    gap: 20px;
+  }
+
+  .countdown-overlay.active {
+    display: flex;
+  }
+
+  .countdown-number {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 120px;
+    font-weight: 800;
+    color: var(--accent);
+    text-shadow: 0 0 60px var(--accent-glow);
+    animation: countPulse 1s ease-in-out infinite;
+  }
+
+  .countdown-text {
+    font-size: 18px;
+    color: var(--text-dim);
+    letter-spacing: 4px;
+    font-weight: 700;
+  }
+
+  @keyframes countPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+  }
+
+  /* Done screen */
+  #done-screen {
+    align-items: center;
+    justify-content: center;
+    gap: 24px;
+    padding: 40px 20px;
+  }
+
+  .done-emoji {
+    font-size: 80px;
+    animation: bounce 1s ease-in-out infinite;
+  }
+
+  @keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+  }
+
+  .done-title {
+    font-size: 32px;
+    font-weight: 900;
+    background: linear-gradient(135deg, #4dff91, #33ccff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .done-stats {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 16px;
+    line-height: 2;
+  }
+
+  .done-stats strong {
+    color: var(--text);
+  }
+
+  .done-btn {
+    padding: 16px 48px;
+    border: none;
+    border-radius: 14px;
+    font-family: 'Noto Sans TC', sans-serif;
+    font-size: 18px;
+    font-weight: 700;
+    cursor: pointer;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text);
+    margin-top: 16px;
+    transition: all 0.2s;
+  }
+
+  .done-btn:active {
+    transform: scale(0.95);
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div id="setup-screen" class="screen active">
+  <div class="app-header">
+    <h1>HIIT 計時器</h1>
+    <p>自訂你的間歇訓練</p>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">⏱</span> 時間設定</div>
+    <div class="time-grid">
+      <div class="time-setting">
+        <label>運動時間</label>
+        <div class="time-control">
+          <button onclick="adjustTime('work', -5)">−</button>
+          <div><span class="value" id="work-time">35</span><div class="unit">秒</div></div>
+          <button onclick="adjustTime('work', 5)">+</button>
+        </div>
+      </div>
+      <div class="time-setting">
+        <label>動作間休息</label>
+        <div class="time-control">
+          <button onclick="adjustTime('rest', -5)">−</button>
+          <div><span class="value" id="rest-time">20</span><div class="unit">秒</div></div>
+          <button onclick="adjustTime('rest', 5)">+</button>
+        </div>
+      </div>
+      <div class="time-setting">
+        <label>組間休息</label>
+        <div class="time-control">
+          <button onclick="adjustTime('setRest', -5)">−</button>
+          <div><span class="value" id="set-rest-time">60</span><div class="unit">秒</div></div>
+          <button onclick="adjustTime('setRest', 5)">+</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">🔄</span> 組數</div>
+    <div class="sets-row">
+      <button onclick="adjustSets(-1)">−</button>
+      <div class="value" id="sets-count">4</div>
+      <button onclick="adjustSets(1)">+</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">💪</span> 動作清單（可拖曳排序）</div>
+    <div class="exercise-list" id="exercise-list"></div>
+    <button class="add-exercise-btn" onclick="addExercise('')">＋ 新增動作</button>
+  </div>
+
+  <div class="start-btn-container">
+    <button class="start-btn" onclick="startWorkout()">開始訓練</button>
+  </div>
+</div>
+
+<!-- COUNTDOWN OVERLAY -->
+<div class="countdown-overlay" id="countdown-overlay">
+  <div class="countdown-text">準備開始</div>
+  <div class="countdown-number" id="countdown-number">3</div>
+</div>
+
+<!-- TIMER SCREEN -->
+<div id="timer-screen" class="screen">
+  <div class="timer-content">
+    <div class="progress-info" id="progress-info">第 1 組 / 共 4 組</div>
+    <div class="phase-label" id="phase-label">運動</div>
+    <div class="exercise-name" id="exercise-name">快速跳繩</div>
+
+    <div class="timer-ring-container">
+      <svg class="timer-ring" viewBox="0 0 260 260">
+        <circle class="timer-ring-bg" cx="130" cy="130" r="115"/>
+        <circle class="timer-ring-progress" id="ring-progress" cx="130" cy="130" r="115"
+          stroke-dasharray="722.57" stroke-dashoffset="0"/>
+      </svg>
+      <div class="timer-display" id="timer-display">35</div>
+    </div>
+
+    <div class="exercise-dots" id="exercise-dots"></div>
+
+    <div class="next-up" id="next-up">下一個：<span>開合跳</span></div>
+
+    <div class="timer-controls">
+      <button onclick="stopWorkout()" title="結束">⏹</button>
+      <button class="pause-btn" id="pause-btn" onclick="togglePause()">⏸</button>
+      <button onclick="skipPhase()" title="跳過">⏭</button>
+    </div>
+  </div>
+</div>
+
+<!-- DONE SCREEN -->
+<div id="done-screen" class="screen">
+  <div class="done-emoji">🔥</div>
+  <div class="done-title">訓練完成！</div>
+  <div class="done-stats" id="done-stats"></div>
+  <button class="done-btn" onclick="backToSetup()">返回設定</button>
+</div>
+
+<script>
+  // ===== STATE =====
+  let config = {
+    workTime: 35,
+    restTime: 20,
+    setRestTime: 60,
+    sets: 4,
+    exercises: ['快速跳繩', '開合跳', '中速跳繩', '高抬腿', '交叉腳跳繩', '波比跳']
+  };
+
+  let timerState = {
+    running: false,
+    paused: false,
+    currentSet: 0,
+    currentExercise: 0,
+    phase: 'work', // 'work', 'rest', 'set-rest'
+    timeLeft: 0,
+    totalTime: 0,
+    intervalId: null
+  };
+
+  // ===== AUDIO =====
+  const AudioCtx = window.AudioContext || window.webkitAudioContext;
+  let audioCtx = null;
+
+  function ensureAudio() {
+    if (!audioCtx) audioCtx = new AudioCtx();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+  }
+
+  function beep(freq, duration, times = 1, interval = 150) {
+    ensureAudio();
+    for (let i = 0; i < times; i++) {
+      const startTime = audioCtx.currentTime + (i * (duration + interval)) / 1000;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.3, startTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration / 1000);
+      osc.start(startTime);
+      osc.stop(startTime + duration / 1000);
+    }
+  }
+
+  function beepWork() { beep(880, 200, 2); }
+  function beepRest() { beep(440, 300, 1); }
+  function beepCountdown() { beep(660, 100, 1); }
+  function beepDone() { beep(1047, 150, 3, 200); }
+
+  // ===== SETUP CONTROLS =====
+  function adjustTime(type, delta) {
+    if (type === 'work') {
+      config.workTime = Math.max(5, Math.min(120, config.workTime + delta));
+      document.getElementById('work-time').textContent = config.workTime;
+    } else if (type === 'rest') {
+      config.restTime = Math.max(5, Math.min(120, config.restTime + delta));
+      document.getElementById('rest-time').textContent = config.restTime;
+    } else if (type === 'setRest') {
+      config.setRestTime = Math.max(10, Math.min(180, config.setRestTime + delta));
+      document.getElementById('set-rest-time').textContent = config.setRestTime;
+    }
+  }
+
+  function adjustSets(delta) {
+    config.sets = Math.max(1, Math.min(10, config.sets + delta));
+    document.getElementById('sets-count').textContent = config.sets;
+  }
+
+  // ===== EXERCISE LIST =====
+  let dragSrcIdx = null;
+
+  function renderExercises() {
+    const list = document.getElementById('exercise-list');
+    list.innerHTML = '';
+    config.exercises.forEach((name, i) => {
+      const item = document.createElement('div');
+      item.className = 'exercise-item';
+      item.draggable = true;
+      item.dataset.index = i;
+      item.innerHTML = `
+        <span class="num">${i + 1}</span>
+        <input type="text" value="${name}" placeholder="輸入動作名稱"
+          oninput="config.exercises[${i}] = this.value" />
+        <span class="drag-handle">⠿</span>
+        <button class="delete-btn" onclick="removeExercise(${i})">✕</button>
+      `;
+
+      item.addEventListener('dragstart', (e) => {
+        dragSrcIdx = i;
+        item.style.opacity = '0.4';
+      });
+      item.addEventListener('dragend', () => { item.style.opacity = '1'; });
+      item.addEventListener('dragover', (e) => e.preventDefault());
+      item.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (dragSrcIdx !== null && dragSrcIdx !== i) {
+          const moved = config.exercises.splice(dragSrcIdx, 1)[0];
+          config.exercises.splice(i, 0, moved);
+          renderExercises();
+        }
+        dragSrcIdx = null;
+      });
+
+      // Touch drag support
+      let touchStartY = 0;
+      item.addEventListener('touchstart', (e) => {
+        dragSrcIdx = i;
+        touchStartY = e.touches[0].clientY;
+      }, { passive: true });
+
+      list.appendChild(item);
+    });
+  }
+
+  function addExercise(name) {
+    config.exercises.push(name || '');
+    renderExercises();
+    // Focus the new input
+    const inputs = document.querySelectorAll('.exercise-item input');
+    if (inputs.length) inputs[inputs.length - 1].focus();
+  }
+
+  function removeExercise(idx) {
+    if (config.exercises.length <= 1) return;
+    config.exercises.splice(idx, 1);
+    renderExercises();
+  }
+
+  // ===== TIMER LOGIC =====
+  function showScreen(id) {
+    document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+  }
+
+  function startWorkout() {
+    ensureAudio();
+    requestWakeLock();
+    // Filter empty exercises
+    config.exercises = config.exercises.filter(e => e.trim());
+    if (config.exercises.length === 0) {
+      config.exercises = ['動作 1'];
+    }
+
+    // Countdown
+    showScreen('timer-screen');
+    const overlay = document.getElementById('countdown-overlay');
+    const num = document.getElementById('countdown-number');
+    overlay.classList.add('active');
+
+    let count = 3;
+    num.textContent = count;
+    beepCountdown();
+
+    const cdInterval = setInterval(() => {
+      count--;
+      if (count > 0) {
+        num.textContent = count;
+        beepCountdown();
+      } else {
+        clearInterval(cdInterval);
+        overlay.classList.remove('active');
+        // Start actual timer
+        timerState = {
+          running: true,
+          paused: false,
+          currentSet: 0,
+          currentExercise: 0,
+          phase: 'work',
+          timeLeft: config.workTime,
+          totalTime: 0,
+          intervalId: null
+        };
+        updateTimerUI();
+        beepWork();
+        timerState.intervalId = setInterval(tick, 1000);
+      }
+    }, 1000);
+  }
+
+  function tick() {
+    if (timerState.paused) return;
+
+    timerState.totalTime++;
+    timerState.timeLeft--;
+
+    // Countdown beeps at 3, 2, 1
+    if (timerState.timeLeft <= 3 && timerState.timeLeft > 0) {
+      beepCountdown();
+    }
+
+    if (timerState.timeLeft <= 0) {
+      advancePhase();
+    }
+
+    updateTimerUI();
+  }
+
+  function advancePhase() {
+    if (timerState.phase === 'work') {
+      // After work: check if last exercise in set
+      if (timerState.currentExercise >= config.exercises.length - 1) {
+        // End of set
+        if (timerState.currentSet >= config.sets - 1) {
+          // All done!
+          finishWorkout();
+          return;
+        }
+        // Set rest
+        timerState.phase = 'set-rest';
+        timerState.timeLeft = config.setRestTime;
+        beepRest();
+      } else {
+        // Exercise rest
+        timerState.phase = 'rest';
+        timerState.timeLeft = config.restTime;
+        beepRest();
+      }
+    } else if (timerState.phase === 'rest') {
+      // Next exercise
+      timerState.currentExercise++;
+      timerState.phase = 'work';
+      timerState.timeLeft = config.workTime;
+      beepWork();
+    } else if (timerState.phase === 'set-rest') {
+      // Next set
+      timerState.currentSet++;
+      timerState.currentExercise = 0;
+      timerState.phase = 'work';
+      timerState.timeLeft = config.workTime;
+      beepWork();
+    }
+  }
+
+  function updateTimerUI() {
+    const screen = document.getElementById('timer-screen');
+    screen.className = `screen active phase-${timerState.phase}`;
+
+    // Progress info
+    document.getElementById('progress-info').textContent =
+      `第 ${timerState.currentSet + 1} 組 / 共 ${config.sets} 組`;
+
+    // Phase label
+    const phaseLabels = { 'work': '運動', 'rest': '休息', 'set-rest': '組間休息' };
+    document.getElementById('phase-label').textContent = phaseLabels[timerState.phase];
+
+    // Exercise name
+    if (timerState.phase === 'work') {
+      document.getElementById('exercise-name').textContent =
+        config.exercises[timerState.currentExercise];
+    } else if (timerState.phase === 'rest') {
+      document.getElementById('exercise-name').textContent = '準備下一個動作';
+    } else {
+      document.getElementById('exercise-name').textContent = '組間休息 💨';
+    }
+
+    // Timer
+    document.getElementById('timer-display').textContent = timerState.timeLeft;
+
+    // Ring progress
+    const circumference = 2 * Math.PI * 115; // 722.57
+    let total;
+    if (timerState.phase === 'work') total = config.workTime;
+    else if (timerState.phase === 'rest') total = config.restTime;
+    else total = config.setRestTime;
+
+    const progress = timerState.timeLeft / total;
+    const offset = circumference * (1 - progress);
+    document.getElementById('ring-progress').style.strokeDashoffset = offset;
+
+    // Exercise dots
+    const dotsContainer = document.getElementById('exercise-dots');
+    dotsContainer.innerHTML = '';
+    config.exercises.forEach((_, i) => {
+      const dot = document.createElement('div');
+      dot.className = 'exercise-dot';
+      if (i < timerState.currentExercise) dot.classList.add('done');
+      if (i === timerState.currentExercise && timerState.phase === 'work') dot.classList.add('current');
+      dotsContainer.appendChild(dot);
+    });
+
+    // Next up
+    const nextUp = document.getElementById('next-up');
+    if (timerState.phase === 'work') {
+      if (timerState.currentExercise < config.exercises.length - 1) {
+        nextUp.innerHTML = `下一個：<span>${config.exercises[timerState.currentExercise + 1]}</span>`;
+      } else if (timerState.currentSet < config.sets - 1) {
+        nextUp.innerHTML = `下一組：<span>${config.exercises[0]}</span>`;
+      } else {
+        nextUp.innerHTML = `<span>最後一個動作！衝！</span>`;
+      }
+    } else if (timerState.phase === 'rest') {
+      nextUp.innerHTML = `下一個：<span>${config.exercises[timerState.currentExercise + 1]}</span>`;
+    } else {
+      nextUp.innerHTML = `下一組第一個：<span>${config.exercises[0]}</span>`;
+    }
+
+    // Pause button
+    document.getElementById('pause-btn').textContent = timerState.paused ? '▶' : '⏸';
+  }
+
+  function togglePause() {
+    timerState.paused = !timerState.paused;
+    document.getElementById('pause-btn').textContent = timerState.paused ? '▶' : '⏸';
+  }
+
+  function skipPhase() {
+    timerState.timeLeft = 0;
+    advancePhase();
+    updateTimerUI();
+  }
+
+  function stopWorkout() {
+    if (confirm('確定要結束訓練嗎？')) {
+      clearInterval(timerState.intervalId);
+      timerState.running = false;
+      releaseWakeLock();
+      backToSetup();
+    }
+  }
+
+  function finishWorkout() {
+    clearInterval(timerState.intervalId);
+    timerState.running = false;
+    releaseWakeLock();
+    beepDone();
+
+    const mins = Math.floor(timerState.totalTime / 60);
+    const secs = timerState.totalTime % 60;
+    const totalExercises = config.sets * config.exercises.length;
+
+    document.getElementById('done-stats').innerHTML = `
+      總時間：<strong>${mins} 分 ${secs} 秒</strong><br>
+      完成組數：<strong>${config.sets} 組</strong><br>
+      總動作數：<strong>${totalExercises} 個</strong><br>
+      動作時間：<strong>${config.workTime} 秒</strong>
+    `;
+
+    showScreen('done-screen');
+  }
+
+  function backToSetup() {
+    showScreen('setup-screen');
+    renderExercises();
+  }
+
+  // ===== WAKE LOCK (prevent screen off during workout) =====
+  let wakeLock = null;
+
+  async function requestWakeLock() {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLock = await navigator.wakeLock.request('screen');
+      }
+    } catch (e) { /* ignore */ }
+  }
+
+  function releaseWakeLock() {
+    if (wakeLock) { wakeLock.release(); wakeLock = null; }
+  }
+
+  // ===== INIT =====
+  renderExercises();
+
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js');
+  }
+</script>
+</body>
+</html>
