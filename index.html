@@ -727,27 +727,144 @@
     if (audioCtx.state === 'suspended') audioCtx.resume();
   }
 
-  function beep(freq, duration, times = 1, interval = 150) {
+  // Helper: play a tone with options
+  function playTone(freq, duration, { type = 'sine', volume = 0.5, delay = 0, fadeOut = true } = {}) {
     ensureAudio();
-    for (let i = 0; i < times; i++) {
-      const startTime = audioCtx.currentTime + (i * (duration + interval)) / 1000;
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.connect(gain);
-      gain.connect(audioCtx.destination);
-      osc.frequency.value = freq;
-      osc.type = 'sine';
-      gain.gain.setValueAtTime(0.3, startTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, startTime + duration / 1000);
-      osc.start(startTime);
-      osc.stop(startTime + duration / 1000);
+    const t = audioCtx.currentTime + delay;
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t);
+    gain.gain.setValueAtTime(volume, t);
+    if (fadeOut) {
+      gain.gain.exponentialRampToValueAtTime(0.01, t + duration);
     }
+    osc.start(t);
+    osc.stop(t + duration);
+    return osc;
   }
 
-  function beepWork() { beep(880, 200, 2); }
-  function beepRest() { beep(440, 300, 1); }
-  function beepCountdown() { beep(660, 100, 1); }
-  function beepDone() { beep(1047, 150, 3, 200); }
+  // Helper: noise burst (for percussive sounds)
+  function playNoise(duration, { volume = 0.3, delay = 0, filterFreq = 3000 } = {}) {
+    ensureAudio();
+    const t = audioCtx.currentTime + delay;
+    const bufferSize = audioCtx.sampleRate * duration;
+    const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = (Math.random() * 2 - 1);
+    }
+    const source = audioCtx.createBufferSource();
+    source.buffer = buffer;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.value = filterFreq;
+    const gain = audioCtx.createGain();
+    gain.gain.setValueAtTime(volume, t);
+    gain.gain.exponentialRampToValueAtTime(0.01, t + duration);
+    source.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioCtx.destination);
+    source.start(t);
+    source.stop(t + duration);
+  }
+
+  // 🥊 運動開始：拳擊鈴聲 - 兩聲有力的金屬撞擊
+  function beepWork() {
+    ensureAudio();
+    // 第一聲鈴
+    playTone(1200, 0.4, { type: 'square', volume: 0.15, delay: 0 });
+    playTone(2400, 0.3, { type: 'sine', volume: 0.4, delay: 0 });
+    playTone(3200, 0.25, { type: 'sine', volume: 0.25, delay: 0 });
+    playNoise(0.08, { volume: 0.4, delay: 0, filterFreq: 5000 });
+    // 第二聲鈴
+    playTone(1200, 0.4, { type: 'square', volume: 0.15, delay: 0.25 });
+    playTone(2400, 0.3, { type: 'sine', volume: 0.4, delay: 0.25 });
+    playTone(3200, 0.25, { type: 'sine', volume: 0.25, delay: 0.25 });
+    playNoise(0.08, { volume: 0.4, delay: 0.25, filterFreq: 5000 });
+  }
+
+  // 😌 休息開始：柔和下降的提示音
+  function beepRest() {
+    ensureAudio();
+    playTone(880, 0.3, { type: 'sine', volume: 0.35, delay: 0 });
+    playTone(660, 0.3, { type: 'sine', volume: 0.3, delay: 0.15 });
+    playTone(440, 0.5, { type: 'sine', volume: 0.25, delay: 0.3 });
+    // 加一層柔和的三角波增加溫暖感
+    playTone(880, 0.3, { type: 'triangle', volume: 0.15, delay: 0 });
+    playTone(660, 0.3, { type: 'triangle', volume: 0.12, delay: 0.15 });
+    playTone(440, 0.5, { type: 'triangle', volume: 0.1, delay: 0.3 });
+  }
+
+  // ⏰ 倒數 3 秒：急促升調嗶嗶嗶
+  function beepCountdown() {
+    ensureAudio();
+    // 每次呼叫播一聲，音調會根據剩餘秒數自動升高
+    // 基礎音：短促有力的升調
+    const t = audioCtx.currentTime;
+    const osc1 = audioCtx.createOscillator();
+    const osc2 = audioCtx.createOscillator();
+    const gain1 = audioCtx.createGain();
+    const gain2 = audioCtx.createGain();
+    
+    osc1.connect(gain1);
+    gain1.connect(audioCtx.destination);
+    osc2.connect(gain2);
+    gain2.connect(audioCtx.destination);
+    
+    // 主音：快速上升
+    osc1.type = 'square';
+    osc1.frequency.setValueAtTime(800, t);
+    osc1.frequency.exponentialRampToValueAtTime(1600, t + 0.1);
+    gain1.gain.setValueAtTime(0.25, t);
+    gain1.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+    
+    // 輔音：增加厚度
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1200, t);
+    osc2.frequency.exponentialRampToValueAtTime(2000, t + 0.1);
+    gain2.gain.setValueAtTime(0.2, t);
+    gain2.gain.exponentialRampToValueAtTime(0.01, t + 0.12);
+    
+    osc1.start(t);
+    osc1.stop(t + 0.15);
+    osc2.start(t);
+    osc2.stop(t + 0.12);
+    
+    // 加一點打擊感
+    playNoise(0.03, { volume: 0.2, delay: 0, filterFreq: 8000 });
+  }
+
+  // 🏆 訓練完成：遊戲過關勝利音效
+  function beepDone() {
+    ensureAudio();
+    // 經典勝利旋律：Do Mi Sol Do↑
+    const notes = [
+      { freq: 523, delay: 0, dur: 0.15 },    // C5
+      { freq: 659, delay: 0.15, dur: 0.15 },  // E5
+      { freq: 784, delay: 0.3, dur: 0.15 },   // G5
+      { freq: 1047, delay: 0.5, dur: 0.5 },   // C6 (長音結尾)
+    ];
+    
+    notes.forEach(n => {
+      // 主旋律：明亮的方波
+      playTone(n.freq, n.dur, { type: 'square', volume: 0.18, delay: n.delay });
+      // 和聲層：正弦波
+      playTone(n.freq, n.dur * 1.2, { type: 'sine', volume: 0.3, delay: n.delay });
+      // 高八度泛音
+      playTone(n.freq * 2, n.dur * 0.8, { type: 'sine', volume: 0.1, delay: n.delay });
+    });
+    
+    // 最後一個音加和弦
+    playTone(1047, 0.6, { type: 'triangle', volume: 0.15, delay: 0.5 });
+    playTone(1319, 0.5, { type: 'sine', volume: 0.12, delay: 0.55 }); // E6
+    playTone(1568, 0.4, { type: 'sine', volume: 0.08, delay: 0.6 });  // G6
+    
+    // 勝利的閃光噪音
+    playNoise(0.05, { volume: 0.15, delay: 0.5, filterFreq: 6000 });
+  }
 
   // ===== SETUP CONTROLS =====
   function adjustTime(type, delta) {
